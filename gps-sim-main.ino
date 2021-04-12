@@ -1,4 +1,10 @@
-
+#include <Ftp.h>
+#include <Geo.h>
+#include <GPRS.h>
+#include <Http.h>
+#include <Parser.h>
+#include <Result.h>
+#include <Sim800.h>
 #include <SoftwareSerial.h>
 #include <TinyGPS++.h>
 #include <String.h>
@@ -13,6 +19,7 @@ SoftwareSerial gpsSerial(RXPin, TXPin);
 
 int RXPinSIM = 10;
 int TXPinSIM = 11;
+int RSTPinSIM = 13;
 SoftwareSerial Sim800l(RXPinSIM,TXPinSIM);
 
 // Create a TinyGPS++ object
@@ -52,12 +59,23 @@ void loop()
     while(true);
   }
 
-
+  sendData(data);
   
 }
 
 
-void sendData(){
+void sendData(data){
+  const char BEARER[] PROGMEM = "airtelgprs.com";
+
+  HTTP http(9600, RXPinSIM, TXPinSIM, RSTPinSIM);
+  http.connect(BEARER);
+  
+  char response[256];
+  Result result = http.post("31.171.250.88", "{\"data\": " + data + "}", response);
+  
+  Serial.println(response);
+  
+  http.disconnect();
 
   
 }
