@@ -64,14 +64,20 @@ void loop()
 }
 
 
-void sendData(data){
+void sendData(String data){
+
+  String datanew = String("{\"data\": ") + data + String("}");
+  
+  char * tab2 = new char [datanew.length()+1];
+  strcpy (tab2, datanew.c_str());
+  
   const char BEARER[] PROGMEM = "airtelgprs.com";
 
   HTTP http(9600, RXPinSIM, TXPinSIM, RSTPinSIM);
   http.connect(BEARER);
   
   char response[256];
-  Result result = http.post("31.171.250.88", "{\"data\": " + data + "}", response);
+  Result result = http.post("31.171.250.88", tab2, response);
   
   Serial.println(response);
   
