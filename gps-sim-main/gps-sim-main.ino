@@ -12,13 +12,12 @@
 
 
 // Choose two Arduino pins to use for software serial
-int RXPin = 9;
-int TXPin = 8;
-int GPSBaud = 9600;
+int RXPin = 12;
+int TXPin = 11;
 SoftwareSerial gpsSerial(RXPin, TXPin);
 
-int RXPinSIM = 10;
-int TXPinSIM = 11;
+int RXPinSIM = 7;
+int TXPinSIM = 8;
 int RSTPinSIM = 13;
 SoftwareSerial Sim800l(RXPinSIM,TXPinSIM);
 
@@ -42,6 +41,7 @@ void setup() {
  
  Serial.println("Start Program");
 
+ simSetup();
 }
 
 
@@ -49,42 +49,69 @@ void loop()
 {
   // This sketch displays information every time a new sentence is correctly encoded.
   while (gpsSerial.available() > 0)
-    if (gps.encode(gpsSerial.read())){
-      data = getGPSData();
-    }
+    if (gps.encode(gpsSerial.read()))
+      sendData(getGPSData());
 
+  // If 5000 milliseconds pass and there are no characters coming in
+  // over the software serial port, show a "No GPS detected" error
   if (millis() > 5000 && gps.charsProcessed() < 10)
   {
     Serial.println("No GPS detected");
     while(true);
   }
 
-  sendData(data);
-  
+    delay(10000);
+
 }
 
 
 void sendData(String data){
 
   String datanew = String("{\"data\": ") + data + String("}");
-  
+  Serial.println(datanew);
   char * tab2 = new char [datanew.length()+1];
   strcpy (tab2, datanew.c_str());
-  
-  const char BEARER[] PROGMEM = "airtelgprs.com";
+  Serial.println("posting request\n\n");
 
-  HTTP http(9600, RXPinSIM, TXPinSIM, RSTPinSIM);
-  http.connect(BEARER);
-  
-  char response[256];
-  Result result = http.post("31.171.250.88", tab2, response);
-  
-  Serial.println(response);
-  
-  http.disconnect();
+  Sim800l.write("AT+CIPSTART=\"TCP\",\"31.171.250.88\",8080");
+  Sim800l.write("WAIT=3");
 
+  String request = String("\nPOST / HTTP/1.1\nHost: 31.171.250.88:8080\nContent-Type: application/json\nContent-Length:") + static_cast<String>(datanew.length()) + String("\n");
+  Serial.println(request.length());
+  String frequest = String("CIPSEND=") + static_cast<String>(request.length()+11) + String(request);
+  Serial.println(request);
+  Serial.println(frequest);
+  Serial.println(tab2);
+  char * req = new char [frequest.length()+1];
+  strcpy (req, frequest.c_str());
   
+  Sim800l.write(req);
+  Sim800l.write(tab2);
+
+  Serial.println("********************************");
 }
+
+void simSetup(){
+
+  Serial.println("setting up your sim");
+//  enter GPRS configuration mode
+  Sim800l.write("AT+CGATT=1\r\n");
+// Disable multi IP connection mode.  Single IP cnxn only
+  Sim800l.write("AT+CIPMUX=0\r\n");
+// set up apn
+  Sim800l.write("AT+CSTT=\"airtelgprs.com\",\"\",\"\"\r\n");
+// bring up wireless connection with GPRS and CSD 
+  Sim800l.write("AT+CIICR\r\n");
+// ip up - gprs working
+  Sim800l.write("AT+CIFSR\r\n");
+// Exit GPRS configuration mode
+  Sim800l.write("AT+CIPSHUT\r\n");
+  Serial.println("sim set up is complete");
+
+  
+// ref: https://stackoverflow.com/questions/33346425/sim800-at-command-post-data-to-server
+  
+  }
 
 void simSleepOff(){
   Sim800l.write("AT\r\n");
@@ -134,5 +161,6 @@ String getGPSData()
 
   String data = String("{latitude:") + latitude + ",longitude" + longitude + ",altitude:" + alti + ",date:" + curDate + ",satellites:" + sat + ",time:" + curTime + "}";
 
+  Serial.print("gps data concatenated");
   return data;
  }
