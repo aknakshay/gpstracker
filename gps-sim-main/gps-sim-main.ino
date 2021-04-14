@@ -138,9 +138,9 @@ void sendData(String data){
   String cipStart("AT+CIPSTART=\"TCP\",\"31.171.250.88\",8080\r\n");
   Sim800l.write(cipStart.c_str());
   Serial.println(cipStart.c_str());
-  
+  delay(4000);
   int l = 97 + datanew.length();
-  String frequest("CIPSEND=" + String(l) + "\r\n");
+  String frequest("AT+CIPSEND=" + String(l) + "\r\n");
   
   Serial.println(frequest.c_str());
 Serial.println(datanew.c_str());
@@ -154,6 +154,7 @@ Sim800l.write(datanew.c_str());
 
 Sim800l.write("\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n");
 
+Sim800l.write("AT+CIPSHUT");
   
 //  Sim800l.write(frequest.c_str());
 //  updateSerial();
@@ -196,7 +197,7 @@ void setup() {
  
  Serial.println("Start Program");
 
-  simSetup();
+ // simSetup();
  
 }
 
