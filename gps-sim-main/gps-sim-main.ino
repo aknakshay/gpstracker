@@ -25,24 +25,55 @@ TinyGPSPlus gps;
 //String sat;
 //String curTime;
 
+void updateSerial()
+{
+  delay(1000);
+  while (Serial.available()) 
+  {
+    Sim800l.write(Serial.read());//Forward what Serial received to Software Serial Port
+  }
+  while(Sim800l.available()) 
+  {
+    Serial.write(Sim800l.read());//Forward what Software Serial received to Serial Port
+  }
+}
+
 
 void simSetup(){
 
   Serial.println("setting up your sim");
 //  enter GPRS configuration mode
-  Sim800l.write("a\r\n");
+  Sim800l.write("AT+CGATT=1\r\n");
+  updateSerial();
+
+
 // Disable multi IP connection mode.  Single IP cnxn only
   Sim800l.write("AT+CIPMUX=0\r\n");
+  updateSerial();
+
+
 // set up apn
   Sim800l.write("AT+CSTT=\"airtelgprs.com\",\"\",\"\"\r\n");
+  updateSerial();
+
+
+
 // bring up wireless connection with GPRS and CSD 
   Sim800l.write("AT+CIICR\r\n");
+  updateSerial();
+
+
 // ip up - gprs working
   Sim800l.write("AT+CIFSR\r\n");
+  updateSerial();
+
+
 // Exit GPRS configuration mode
   Sim800l.write("AT+CIPSHUT\r\n");
-  Serial.println("sim set up is complete");
+  updateSerial();
 
+
+  Serial.println("sim set up is complete");
   
 // ref: https://stackoverflow.com/questions/33346425/sim800-at-command-post-data-to-server
   
@@ -93,33 +124,50 @@ String getGPSData()
   ",date_month:" + date_month + ",date_day:" + date_day + ",date_year:" + date_year  + ",satellites:" + sat + 
   ",time_hour:" + time_hour + ",time_minute:" + time_minute + ",time_second:" + time_second +"}";
 
-  Serial.print("gps data concatenated");
+  Serial.println("gps data concatenated");
   return data;
  }
 
 
 void sendData(String data){
 
-  String datanew("{\"data\": " + data + "}");
+  String datanew("\n{\"data\": " + data + "}");
     
-  Serial.println(datanew);
   Serial.println("posting request\n\n");
 
-  Sim800l.write("AT+CIPSTART=\"TCP\",\"31.171.250.88\",8080");
-  Sim800l.write("WAIT=3");
+  String cipStart("AT+CIPSTART=\"TCP\",\"31.171.250.88\",8080\r\n");
+  Sim800l.write(cipStart.c_str());
+  Serial.println(cipStart.c_str());
+  
+  int l = 97 + datanew.length();
+  String frequest("CIPSEND=" + String(l) + "\r\n");
+  
+  Serial.println(frequest.c_str());
+Serial.println(datanew.c_str());
+Sim800l.write(frequest.c_str());
+Sim800l.write("POST / HTTP/1.1\r\n");
+Sim800l.write("Host: 31.171.250.88:8080\r\n");
+Sim800l.write("Content-Type: application/json\r\n");
+Sim800l.write("Content-Length:" + datanew.length());  
+Sim800l.write("\r\n");
+Sim800l.write(datanew.c_str());
 
-
-  String request("\nPOST / HTTP/1.1\nHost: 31.171.250.88:8080\nContent-Type: application/json\nContent-Length:" + datanew.length() + String("\n"));
-  Serial.println(request.length());
-
-  String frequest("CIPSEND=" + request.length() + request);
-  Serial.println(request);
-  Serial.println(frequest);
+Sim800l.write("\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n");
 
   
-  Sim800l.write(frequest.c_str());
+//  Sim800l.write(frequest.c_str());
+//  updateSerial();
 
+//  Sim800l.write(request.c_str());
+//  updateSerial();
+  
+//  Sim800l.write(datanew.c_str());
+//  Sim800l.write("\n\n\n\n\n\n\n");
+//  updateSerial();
+
+ 
   Serial.println("********************************");
+  delay(2000);
 
 }
 
@@ -148,7 +196,7 @@ void setup() {
  
  Serial.println("Start Program");
 
- //simSetup();
+  simSetup();
  
 }
 
@@ -158,7 +206,7 @@ void loop()
   // This sketch displays information every time a new sentence is correctly encoded.
   while (gpsSerial.available() > 0){
     if (gps.encode(gpsSerial.read()))
-      Serial.println(getGPSData());
+      sendData(getGPSData());
   }
 
   // If 5000 milliseconds pass and there are no characters coming in
