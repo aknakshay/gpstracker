@@ -168,7 +168,7 @@ Sim800l.write("AT+CIPSHUT");
 
  
   Serial.println("********************************");
-  delay(2000);
+  delay(10000);
 
 }
 
